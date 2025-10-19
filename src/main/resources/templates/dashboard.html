@@ -1,0 +1,522 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/thymeleaf-extras-springsecurity6">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>Dashboard - Finanzas App</title>
+
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
+    <link th:href="@{/css/style.css}" rel="stylesheet" />
+</head>
+<body>
+    <!-- Navbar -->
+    <div th:replace="~{layout :: navbar}"></div>
+
+    <div class="container mt-4">
+
+        <!-- Mensajes flash -->
+        <div th:if="${success}" class="alert alert-success alert-dismissible fade show" role="alert">
+            <i class="fas fa-check-circle"></i> <span th:text="${success}"></span>
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+        <div th:if="${error}" class="alert alert-danger alert-dismissible fade show" role="alert">
+            <i class="fas fa-exclamation-triangle"></i> <span th:text="${error}"></span>
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+
+        <!-- Resumen superior -->
+        <div class="row g-3 mb-4">
+            <div class="col-md-3">
+                <div class="card border-success">
+                    <div class="card-body text-center">
+                        <h6><i class="fas fa-arrow-down text-success"></i> Total Ingresos</h6>
+                        <h3 class="fw-bold text-success" th:text="'$' + ${#numbers.formatDecimal(totalIngresos ?: 0,1,'POINT',0,'COMMA')}">$0</h3>
+                        <small class="text-muted">(solo actividades completadas)</small>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card border-danger">
+                    <div class="card-body text-center">
+                        <h6><i class="fas fa-arrow-up text-danger"></i> Total Gastos</h6>
+                        <h3 class="fw-bold text-danger" th:text="'$' + ${#numbers.formatDecimal(totalGastos ?: 0,1,'POINT',0,'COMMA')}">$0</h3>
+                        <small class="text-muted">(solo actividades completadas)</small>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card" th:classappend="${balance != null ? (balance >= 0 ? 'border-success' : 'border-danger') : 'border-secondary'}">
+                    <div class="card-body text-center">
+                        <h6><i class="fas fa-balance-scale"></i> Balance (mes)</h6>
+                        <h3 class="fw-bold" th:classappend="${balance != null ? (balance >= 0 ? 'text-success' : 'text-danger') : 'text-muted'}"
+                            th:text="'$' + ${#numbers.formatDecimal(balance ?: 0,1,'POINT',0,'COMMA')}">$0</h3>
+                        <small class="text-muted">Ingresos - Gastos (completados)</small>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-3 d-flex align-items-center justify-content-end">
+                <div>
+                    <button class="btn btn-primary me-2" data-bs-toggle="modal" data-bs-target="#actividadModal">
+                        <i class="fas fa-plus"></i> Nueva actividad
+                    </button>
+                    <a th:href="@{/admin/dashboard}" sec:authorize="hasRole('ADMIN')" class="btn btn-outline-secondary">
+                        <i class="fas fa-user-cog"></i> Admin
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <!-- Columna izquierda: resumen Pendientes/Completadas -->
+            <div class="col-md-3" th:with="
+                pendientesSize=${actividadesPendientes != null ? actividadesPendientes.size() : 0},
+                completasSize=${actividadesCompletadas != null ? actividadesCompletadas.size() : 0},
+                totalSize=${(pendientesSize + completasSize) > 0 ? (pendientesSize + completasSize) : 0},
+                pendientesPct=${totalSize > 0 ? (pendientesSize * 100) / totalSize : 0},
+                completasPct=${totalSize > 0 ? (completasSize * 100) / totalSize : 0}">
+                <div class="card mb-3">
+                    <div class="card-body">
+                        <h6 class="mb-3"><i class="fas fa-tasks"></i> Actividades</h6>
+
+                        <div class="mb-3">
+                            <div class="d-flex justify-content-between">
+                                <small><i class="fas fa-clock text-warning"></i> Pendientes</small>
+                                <span class="badge bg-warning text-dark" th:text="${pendientesSize}">0</span>
+                            </div>
+                            <div class="progress mt-2" style="height:10px;">
+                                <div class="progress-bar bg-warning" role="progressbar"
+                                     th:attr="aria-valuenow=${pendientesPct}"
+                                     aria-valuemin="0" aria-valuemax="100"
+                                     th:style="'width:' + ${pendientesPct} + '%;'">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <div class="d-flex justify-content-between">
+                                <small><i class="fas fa-check-circle text-success"></i> Completadas</small>
+                                <span class="badge bg-success" th:text="${completasSize}">0</span>
+                            </div>
+                            <div class="progress mt-2" style="height:10px;">
+                                <div class="progress-bar bg-success" role="progressbar"
+                                     th:attr="aria-valuenow=${completasPct}"
+                                     aria-valuemin="0" aria-valuemax="100"
+                                     th:style="'width:' + ${completasPct} + '%;'">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="d-grid gap-2">
+                            <button class="btn btn-outline-warning btn-sm" id="btnVerPendientes">
+                                <i class="fas fa-clock"></i> Ver Pendientes
+                            </button>
+                            <button class="btn btn-outline-success btn-sm" id="btnVerCompletadas">
+                                <i class="fas fa-check-circle"></i> Ver Completadas
+                            </button>
+                            <button class="btn btn-outline-primary btn-sm" id="btnVerTodo">
+                                <i class="fas fa-list"></i> Ver Todo
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tabla principal -->
+            <div class="col-md-9">
+                <div class="card">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h6 class="mb-0"><i class="fas fa-list"></i> Lista de actividades 
+                            <span class="badge bg-primary ms-2" th:text="${(actividadesPendientes != null ? actividadesPendientes.size() : 0) + (actividadesCompletadas != null ? actividadesCompletadas.size() : 0)}">0</span>
+                        </h6>
+                        <div style="width: 320px;">
+                            <div class="input-group input-group-sm">
+                                <span class="input-group-text"><i class="fas fa-search"></i></span>
+                                <input id="buscar" class="form-control" placeholder="Buscar por descripción..." />
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card-body p-0">
+                        <div class="table-responsive">
+                            <table class="table table-hover mb-0" id="tablaActividades">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Descripción</th>
+                                        <th>Tipo</th>
+                                        <th>Categoría</th>
+                                        <th>Monto</th>
+                                        <th>Estado</th>
+                                        <th>Fecha</th>
+                                        <th class="text-end">Acciones</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <!-- Actividades Pendientes -->
+                                    <tr th:each="actividad : ${actividadesPendientes != null ? actividadesPendientes : T(java.util.Collections).emptyList()}" 
+                                        class="actividad-row" data-estado="PENDIENTE">
+                                        <td th:text="${actividad.descripcion}">Desc</td>
+                                        <td>
+                                            <span th:if="${actividad.tipo != null and actividad.tipo.name() == 'INGRESO'}" 
+                                                  class="badge bg-success">INGRESO</span>
+                                            <span th:if="${actividad.tipo != null and actividad.tipo.name() == 'GASTO'}" 
+                                                  class="badge bg-danger">GASTO</span>
+                                        </td>
+                                        <td>
+                                            <span class="badge bg-secondary" th:text="${actividad.categoria}">CAT</span>
+                                        </td>
+                                        <td th:text="'$' + ${#numbers.formatDecimal(actividad.monto ?: 0,1,'POINT',0,'COMMA')}" 
+                                            th:classappend="${actividad.tipo != null and actividad.tipo.name() == 'INGRESO'} ? 'text-success fw-bold' : 'text-danger fw-bold'">
+                                            $0
+                                        </td>
+                                        <td>
+                                            <span class="badge bg-warning text-dark">
+                                                <i class="fas fa-clock"></i> PENDIENTE
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <small class="text-muted" 
+                                                   th:text="${actividad.createdAt != null ? #temporals.format(actividad.createdAt,'dd/MM/yyyy HH:mm') : ''}">
+                                            </small>
+                                        </td>
+                                        <td class="text-end">
+                                            <div class="btn-group btn-group-sm" role="group">
+                                                <button type="button" class="btn btn-outline-primary"
+                                                        th:attr="data-id=${actividad.id}, 
+                                                                data-desc=${actividad.descripcion}, 
+                                                                data-monto=${#numbers.formatDecimal(actividad.monto ?: 0,1,'POINT',0,'COMMA')}, 
+                                                                data-tipo=${actividad.tipo}, 
+                                                                data-categoria=${actividad.categoria}"
+                                                        onclick="abrirModalEditar(this)" 
+                                                        title="Editar">
+                                                    <i class="fas fa-edit"></i>
+                                                </button>
+
+                                                <form th:action="@{/dashboard/actividad/cambiar-estado/{id}(id=${actividad.id})}" 
+                                                      method="post" class="d-inline">
+                                                    <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}" />
+                                                    <input type="hidden" name="nuevoEstado" value="COMPLETADO" />
+                                                    <button type="submit" class="btn btn-outline-success" 
+                                                            title="Marcar como completado">
+                                                        <i class="fas fa-check"></i>
+                                                    </button>
+                                                </form>
+
+                                                <form th:action="@{/dashboard/actividad/eliminar/{id}(id=${actividad.id})}" 
+                                                      method="post" class="d-inline" 
+                                                      onsubmit="return confirm('¿Estás seguro de eliminar esta actividad?')">
+                                                    <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}" />
+                                                    <button type="submit" class="btn btn-outline-danger" title="Eliminar">
+                                                        <i class="fas fa-trash"></i>
+                                                    </button>
+                                                </form>
+                                            </div>
+                                        </td>
+                                    </tr>
+
+                                    <!-- Actividades Completadas -->
+                                    <tr th:each="actividad : ${actividadesCompletadas != null ? actividadesCompletadas : T(java.util.Collections).emptyList()}" 
+                                        class="actividad-row" data-estado="COMPLETADO">
+                                        <td th:text="${actividad.descripcion}">Desc</td>
+                                        <td>
+                                            <span th:if="${actividad.tipo != null and actividad.tipo.name() == 'INGRESO'}" 
+                                                  class="badge bg-success">INGRESO</span>
+                                            <span th:if="${actividad.tipo != null and actividad.tipo.name() == 'GASTO'}" 
+                                                  class="badge bg-danger">GASTO</span>
+                                        </td>
+                                        <td>
+                                            <span class="badge bg-secondary" th:text="${actividad.categoria}">CAT</span>
+                                        </td>
+                                        <td th:text="'$' + ${#numbers.formatDecimal(actividad.monto ?: 0,1,'POINT',0,'COMMA')}" 
+                                            th:classappend="${actividad.tipo != null and actividad.tipo.name() == 'INGRESO'} ? 'text-success fw-bold' : 'text-danger fw-bold'">
+                                            $0
+                                        </td>
+                                        <td>
+                                            <span class="badge bg-success">
+                                                <i class="fas fa-check"></i> COMPLETADO
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <small class="text-muted" 
+                                                   th:text="${actividad.createdAt != null ? #temporals.format(actividad.createdAt,'dd/MM/yyyy HH:mm') : ''}">
+                                            </small>
+                                        </td>
+                                        <td class="text-end">
+                                            <div class="btn-group btn-group-sm" role="group">
+                                                <button type="button" class="btn btn-outline-primary"
+                                                        th:attr="data-id=${actividad.id}, 
+                                                                data-desc=${actividad.descripcion}, 
+                                                                data-monto=${#numbers.formatDecimal(actividad.monto ?: 0,1,'POINT',0,'COMMA')}, 
+                                                                data-tipo=${actividad.tipo}, 
+                                                                data-categoria=${actividad.categoria}"
+                                                        onclick="abrirModalEditar(this)" 
+                                                        title="Editar">
+                                                    <i class="fas fa-edit"></i>
+                                                </button>
+
+                                                <form th:action="@{/dashboard/actividad/cambiar-estado/{id}(id=${actividad.id})}" 
+                                                      method="post" class="d-inline">
+                                                    <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}" />
+                                                    <input type="hidden" name="nuevoEstado" value="PENDIENTE" />
+                                                    <button type="submit" class="btn btn-outline-warning" 
+                                                            title="Marcar como pendiente">
+                                                        <i class="fas fa-undo"></i>
+                                                    </button>
+                                                </form>
+
+                                                <form th:action="@{/dashboard/actividad/eliminar/{id}(id=${actividad.id})}" 
+                                                      method="post" class="d-inline" 
+                                                      onsubmit="return confirm('¿Estás seguro de eliminar esta actividad?')">
+                                                    <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}" />
+                                                    <button type="submit" class="btn btn-outline-danger" title="Eliminar">
+                                                        <i class="fas fa-trash"></i>
+                                                    </button>
+                                                </form>
+                                            </div>
+                                        </td>
+                                    </tr>
+
+                                    <!-- Mensaje cuando no hay actividades -->
+                                    <tr th:if="${(actividadesPendientes == null or actividadesPendientes.isEmpty()) and (actividadesCompletadas == null or actividadesCompletadas.isEmpty())}">
+                                        <td colspan="7" class="text-center text-muted py-4">
+                                            <i class="fas fa-inbox fa-2x mb-2"></i><br>
+                                            No hay actividades registradas.<br>
+                                            <button class="btn btn-primary btn-sm mt-2" data-bs-toggle="modal" data-bs-target="#actividadModal">
+                                                <i class="fas fa-plus"></i> Crear primera actividad
+                                            </button>
+                                        </td>
+                                    </tr>
+
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Crear / Editar Actividad -->
+    <div class="modal fade" id="actividadModal" tabindex="-1" aria-labelledby="actividadModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <form id="actividadForm" th:action="@{/dashboard/actividad/nueva}" method="post">
+                    <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}" />
+                    <input type="hidden" id="actividadId" name="id" value="" />
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="actividadModalLabel">
+                            <i class="fas fa-plus"></i> Nueva Actividad
+                        </h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <label for="descripcionInput" class="form-label">Descripción *</label>
+                            <input id="descripcionInput" name="descripcion" type="text" class="form-control" 
+                                   required placeholder="Ej: Pago de salario, Compra en supermercado">
+                            <div class="form-text">Describe brevemente la actividad</div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="montoInput" class="form-label">Monto *</label>
+                            <div class="input-group">
+                                <span class="input-group-text">$</span>
+                                <input id="montoInput" name="monto" type="text" class="form-control" 
+                                       required placeholder="1.000 - 40.000.000"
+                                       pattern="^[1-9]\d{0,2}(\.\d{3})*$"
+                                       title="Monto entre $1.000 y $40.000.000 (formato colombiano)">
+                            </div>
+                            <div class="form-text">Formato colombiano: 1.000, 10.000, 100.000, 1.000.000</div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="tipoInput" class="form-label">Tipo *</label>
+                                <select id="tipoInput" name="tipo" class="form-select" required>
+                                    <option value="">Selecciona un tipo</option>
+                                    <option th:each="t : ${tipos != null ? tipos : T(com.finanzas.entity.TipoActividad).values()}" 
+                                            th:value="${t}" 
+                                            th:text="${t.name()}">
+                                    </option>
+                                </select>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="categoriaInput" class="form-label">Categoría *</label>
+                                <select id="categoriaInput" name="categoria" class="form-select" required disabled>
+                                    <option value="">Primero selecciona un tipo</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                            <i class="fas fa-times"></i> Cancelar
+                        </button>
+                        <button type="submit" class="btn btn-primary" id="submitActividadBtn">
+                            <i class="fas fa-save"></i> Guardar
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <div th:replace="~{layout :: footer}"></div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+
+    <script th:inline="javascript">
+        // Definir categorías por tipo
+        const categoriasPorTipo = {
+            INGRESO: ['SALARIO', 'REGALO', 'OTROS_INGRESOS'],
+            GASTO: ['ALIMENTACION', 'TRANSPORTE', 'VIVIENDA', 'ENTRETENIMIENTO', 'SALUD', 'EDUCACION', 'ROPA', 'OTROS_GASTOS']
+        };
+
+        document.addEventListener('DOMContentLoaded', function() {
+            // Búsqueda en tiempo real
+            const buscar = document.getElementById('buscar');
+            if (buscar) {
+                buscar.addEventListener('input', function() {
+                    const q = this.value.toLowerCase();
+                    document.querySelectorAll('#tablaActividades tbody tr.actividad-row').forEach(row => {
+                        const texto = row.innerText.toLowerCase();
+                        row.style.display = texto.includes(q) ? '' : 'none';
+                    });
+                });
+            }
+
+            // Botones de filtrado por estado
+            const btnPend = document.getElementById('btnVerPendientes');
+            const btnComp = document.getElementById('btnVerCompletadas');
+            const btnTodo = document.getElementById('btnVerTodo');
+            
+            if (btnPend) btnPend.addEventListener('click', () => {
+                document.querySelectorAll('.actividad-row').forEach(r => {
+                    r.style.display = r.dataset.estado === 'PENDIENTE' ? '' : 'none';
+                });
+            });
+            
+            if (btnComp) btnComp.addEventListener('click', () => {
+                document.querySelectorAll('.actividad-row').forEach(r => {
+                    r.style.display = r.dataset.estado === 'COMPLETADO' ? '' : 'none';
+                });
+            });
+            
+            if (btnTodo) btnTodo.addEventListener('click', () => {
+                document.querySelectorAll('.actividad-row').forEach(r => {
+                    r.style.display = '';
+                });
+                if (buscar) buscar.value = '';
+            });
+
+            // Actualizar categorías según tipo seleccionado
+            const tipoInput = document.getElementById('tipoInput');
+            const categoriaInput = document.getElementById('categoriaInput');
+            
+            if (tipoInput) {
+                tipoInput.addEventListener('change', function() {
+                    const tipoSeleccionado = this.value;
+                    
+                    // Limpiar y habilitar categorías
+                    categoriaInput.innerHTML = '<option value="">Selecciona una categoría</option>';
+                    categoriaInput.disabled = !tipoSeleccionado;
+                    
+                    if (tipoSeleccionado && categoriasPorTipo[tipoSeleccionado]) {
+                        categoriasPorTipo[tipoSeleccionado].forEach(function(categoria) {
+                            const option = document.createElement('option');
+                            option.value = categoria;
+                            option.textContent = categoria.replace('_', ' ').toLowerCase()
+                                .split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
+                            categoriaInput.appendChild(option);
+                        });
+                    }
+                });
+            }
+
+            // Función para abrir modal de edición
+            window.abrirModalEditar = function(button) {
+                const id = button.getAttribute('data-id');
+                const desc = button.getAttribute('data-desc') || '';
+                const monto = button.getAttribute('data-monto') || '';
+                const tipo = button.getAttribute('data-tipo') || '';
+                const categoria = button.getAttribute('data-categoria') || '';
+
+                // Actualizar formulario para edición
+                document.getElementById('actividadForm').action = '/dashboard/actividad/editar/' + id;
+                document.getElementById('actividadModalLabel').innerHTML = '<i class="fas fa-edit"></i> Editar Actividad';
+                document.getElementById('actividadId').value = id;
+                document.getElementById('descripcionInput').value = desc;
+                document.getElementById('montoInput').value = monto;
+                
+                if (tipo) {
+                    document.getElementById('tipoInput').value = tipo;
+                    // Disparar evento change para cargar categorías
+                    document.getElementById('tipoInput').dispatchEvent(new Event('change'));
+                    
+                    // Esperar un momento para establecer la categoría
+                    setTimeout(() => {
+                        if (categoria) {
+                            document.getElementById('categoriaInput').value = categoria;
+                        }
+                    }, 100);
+                }
+                
+                document.getElementById('submitActividadBtn').innerHTML = '<i class="fas fa-save"></i> Actualizar';
+
+                // Mostrar modal
+                const modal = new bootstrap.Modal(document.getElementById('actividadModal'));
+                modal.show();
+            };
+
+            // Limpiar formulario cuando se cierre el modal
+            document.getElementById('actividadModal').addEventListener('hidden.bs.modal', function () {
+                document.getElementById('actividadForm').action = '/dashboard/actividad/nueva';
+                document.getElementById('actividadModalLabel').innerHTML = '<i class="fas fa-plus"></i> Nueva Actividad';
+                document.getElementById('actividadId').value = '';
+                document.getElementById('descripcionInput').value = '';
+                document.getElementById('montoInput').value = '';
+                document.getElementById('tipoInput').selectedIndex = 0;
+                document.getElementById('categoriaInput').innerHTML = '<option value="">Primero selecciona un tipo</option>';
+                document.getElementById('categoriaInput').disabled = true;
+                document.getElementById('submitActividadBtn').innerHTML = '<i class="fas fa-save"></i> Guardar';
+            });
+
+            // Formateo automático del monto en formato colombiano
+            const montoInput = document.getElementById('montoInput');
+            if (montoInput) {
+                montoInput.addEventListener('input', function(e) {
+                    let value = e.target.value.replace(/\D/g, '');
+                    
+                    // Aplicar formato colombiano (puntos cada 3 dígitos)
+                    if (value.length > 3) {
+                        value = value.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+                    }
+                    
+                    e.target.value = value;
+                });
+
+                // Validar monto al enviar el formulario
+                document.getElementById('actividadForm').addEventListener('submit', function(e) {
+                    const montoValue = montoInput.value.replace(/\./g, '');
+                    const montoNum = parseInt(montoValue);
+                    
+                    if (montoNum < 1000) {
+                        e.preventDefault();
+                        alert('El monto mínimo es $1.000');
+                        montoInput.focus();
+                        return false;
+                    }
+                    
+                    if (montoNum > 40000000) {
+                        e.preventDefault();
+                        alert('El monto máximo es $40.000.000');
+                        montoInput.focus();
+                        return false;
+                    }
+                });
+            }
+        });
+    </script>
+</body>
+</html>
