@@ -47,4 +47,9 @@ public class UsuarioService {
     public long contarUsuarios() {
         return usuarioRepository.count();
     }
+
+    // Eliminar usuario
+    public void eliminarUsuario(Long id) {
+        usuarioRepository.deleteById(id);
+    }
 }

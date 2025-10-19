@@ -4,6 +4,8 @@ import com.finanzas.entity.RolUsuario;
 import com.finanzas.entity.Usuario;
 import com.finanzas.service.UsuarioService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -15,6 +17,9 @@ public class AuthController {
 
     @Autowired
     private UsuarioService usuarioService;
+
+    @Autowired
+    private PasswordEncoder passwordEncoder;
 
     // Página de login
     @GetMapping("/login")
@@ -58,5 +63,61 @@ public class AuthController {
     @GetMapping("/")
     public String home() {
         return "redirect:/dashboard";
+    }
+
+    // Página para cambiar contraseña
+    @GetMapping("/cambiar-password")
+    public String cambiarPasswordForm() {
+        return "cambiar-password";
+    }
+
+    // Procesar cambio de contraseña
+    @PostMapping("/cambiar-password")
+    public String cambiarPassword(@RequestParam String currentPassword,
+                                 @RequestParam String newPassword,
+                                 @RequestParam String confirmPassword,
+                                 Authentication authentication,
+                                 RedirectAttributes redirectAttributes) {
+        
+        try {
+            String email = authentication.getName();
+            Usuario usuario = usuarioService.encontrarPorEmail(email)
+                    .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
+
+            // Verificar contraseña actual
+            if (!passwordEncoder.matches(currentPassword, usuario.getPassword())) {
+                redirectAttributes.addFlashAttribute("error", "La contraseña actual es incorrecta");
+                return "redirect:/cambiar-password";
+            }
+
+            // Validar que la nueva contraseña sea diferente
+            if (passwordEncoder.matches(newPassword, usuario.getPassword())) {
+                redirectAttributes.addFlashAttribute("error", "La nueva contraseña debe ser diferente a la actual");
+                return "redirect:/cambiar-password";
+            }
+
+            // Validar fortaleza de la nueva contraseña
+            if (newPassword.length() < 6) {
+                redirectAttributes.addFlashAttribute("error", "La nueva contraseña debe tener al menos 6 caracteres");
+                return "redirect:/cambiar-password";
+            }
+
+            // Verificar que las nuevas contraseñas coincidan
+            if (!newPassword.equals(confirmPassword)) {
+                redirectAttributes.addFlashAttribute("error", "Las nuevas contraseñas no coinciden");
+                return "redirect:/cambiar-password";
+            }
+
+            // Actualizar contraseña
+            usuario.setPassword(newPassword);
+            usuarioService.guardarUsuario(usuario);
+
+            redirectAttributes.addFlashAttribute("success", "Contraseña cambiada exitosamente");
+            return "redirect:/dashboard";
+
+        } catch (Exception e) {
+            redirectAttributes.addFlashAttribute("error", "Error al cambiar la contraseña: " + e.getMessage());
+            return "redirect:/cambiar-password";
+        }
     }
 }

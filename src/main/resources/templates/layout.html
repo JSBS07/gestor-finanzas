@@ -39,7 +39,11 @@
                             <span sec:authentication="name">Usuario</span>
                         </a>
                         <ul class="dropdown-menu">
-                            <li><a class="dropdown-item" href="#"><i class="fas fa-user-circle"></i> Mi Perfil</a></li>
+                            <li>
+                                <a class="dropdown-item" th:href="@{/cambiar-password}">
+                                    <i class="fas fa-key"></i> Cambiar Contraseña
+                                </a>
+                            </li>
                             <li><hr class="dropdown-divider"></li>
                             <li>
                                 <form th:action="@{/logout}" method="post" class="d-inline">
