@@ -19,7 +19,10 @@ public class UsuarioService {
 
     // Guardar usuario (encriptando password)
     public Usuario guardarUsuario(Usuario usuario) {
-        usuario.setPassword(passwordEncoder.encode(usuario.getPassword()));
+        // Asegurar que la contraseña siempre se encripte
+        if (usuario.getPassword() != null && !usuario.getPassword().startsWith("$2a$")) {
+            usuario.setPassword(passwordEncoder.encode(usuario.getPassword()));
+        }
         return usuarioRepository.save(usuario);
     }
 
@@ -51,5 +54,17 @@ public class UsuarioService {
     // Eliminar usuario
     public void eliminarUsuario(Long id) {
         usuarioRepository.deleteById(id);
+    }
+
+    // Método específico para cambiar contraseña
+    public boolean cambiarPassword(String email, String nuevaPassword) {
+        Optional<Usuario> usuarioOpt = encontrarPorEmail(email);
+        if (usuarioOpt.isPresent()) {
+            Usuario usuario = usuarioOpt.get();
+            usuario.setPassword(passwordEncoder.encode(nuevaPassword));
+            usuarioRepository.save(usuario);
+            return true;
+        }
+        return false;
     }
 }

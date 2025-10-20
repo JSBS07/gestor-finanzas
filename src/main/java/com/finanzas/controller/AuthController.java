@@ -46,10 +46,16 @@ public class AuthController {
             return "redirect:/register";
         }
 
+        // Validar fortaleza de contraseña
+        if (password.length() < 6) {
+            redirectAttributes.addFlashAttribute("error", "La contraseña debe tener al menos 6 caracteres");
+            return "redirect:/register";
+        }
+
         // Crear nuevo usuario
         Usuario usuario = new Usuario();
         usuario.setEmail(email);
-        usuario.setPassword(password);
+        usuario.setPassword(password); // Se encriptará automáticamente en el servicio
         usuario.setNombre(nombre);
         usuario.setRol(RolUsuario.USUARIO);
 
@@ -84,6 +90,9 @@ public class AuthController {
             Usuario usuario = usuarioService.encontrarPorEmail(email)
                     .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
 
+            System.out.println("Cambiando password para: " + email);
+            System.out.println("Password actual en BD: " + usuario.getPassword());
+
             // Verificar contraseña actual
             if (!passwordEncoder.matches(currentPassword, usuario.getPassword())) {
                 redirectAttributes.addFlashAttribute("error", "La contraseña actual es incorrecta");
@@ -108,14 +117,20 @@ public class AuthController {
                 return "redirect:/cambiar-password";
             }
 
-            // Actualizar contraseña
-            usuario.setPassword(newPassword);
-            usuarioService.guardarUsuario(usuario);
-
-            redirectAttributes.addFlashAttribute("success", "Contraseña cambiada exitosamente");
-            return "redirect:/dashboard";
+            // Actualizar contraseña usando el servicio
+            boolean exito = usuarioService.cambiarPassword(email, newPassword);
+            
+            if (exito) {
+                redirectAttributes.addFlashAttribute("success", "Contraseña cambiada exitosamente");
+                return "redirect:/dashboard";
+            } else {
+                redirectAttributes.addFlashAttribute("error", "Error al guardar la nueva contraseña");
+                return "redirect:/cambiar-password";
+            }
 
         } catch (Exception e) {
+            System.out.println("Error en cambiarPassword: " + e.getMessage());
+            e.printStackTrace();
             redirectAttributes.addFlashAttribute("error", "Error al cambiar la contraseña: " + e.getMessage());
             return "redirect:/cambiar-password";
         }

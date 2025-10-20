@@ -15,11 +15,13 @@
     <div class="container mt-4">
         <!-- Mensajes flash -->
         <div th:if="${success}" class="alert alert-success alert-dismissible fade show" role="alert">
-            <i class="fas fa-check-circle"></i> <span th:text="${success}"></span>
+            <i class="fas fa-check-circle"></i> 
+            <span th:utext="${success}"></span>
             <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
         </div>
         <div th:if="${error}" class="alert alert-danger alert-dismissible fade show" role="alert">
-            <i class="fas fa-exclamation-triangle"></i> <span th:text="${error}"></span>
+            <i class="fas fa-exclamation-triangle"></i> 
+            <span th:text="${error}"></span>
             <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
         </div>
 
@@ -172,7 +174,7 @@
                         <strong>Nueva contraseña:</strong> <code>123456</code><br>
                         <small>El usuario deberá cambiar esta contraseña después de iniciar sesión.</small>
                     </div>
-                    <div th:if="${usuario != null}" id="adminWarning" class="alert alert-info d-none">
+                    <div id="adminWarning" class="alert alert-info d-none">
                         <i class="fas fa-shield-alt"></i>
                         <strong>Usuario Administrador:</strong> Ten cuidado al resetear contraseñas de otros administradores.
                     </div>
@@ -233,10 +235,14 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
 
     <script>
+        // Función para mostrar modal de resetear contraseña
         function mostrarModalResetPassword(button) {
+            console.log('mostrarModalResetPassword llamado'); // Debug
             const usuarioId = button.getAttribute('data-usuario-id');
             const usuarioEmail = button.getAttribute('data-usuario-email');
             const usuarioRol = button.getAttribute('data-usuario-rol');
+            
+            console.log('Datos:', { usuarioId, usuarioEmail, usuarioRol }); // Debug
             
             document.getElementById('usuarioEmailReset').textContent = usuarioEmail;
             document.getElementById('resetPasswordForm').action = '/admin/usuario/' + usuarioId + '/reset-password';
@@ -253,9 +259,13 @@
             modal.show();
         }
 
+        // Función para mostrar modal de eliminar usuario
         function mostrarModalEliminarUsuario(button) {
+            console.log('mostrarModalEliminarUsuario llamado'); // Debug
             const usuarioId = button.getAttribute('data-usuario-id');
             const usuarioEmail = button.getAttribute('data-usuario-email');
+            
+            console.log('Datos:', { usuarioId, usuarioEmail }); // Debug
             
             document.getElementById('usuarioEmailEliminar').textContent = usuarioEmail;
             document.getElementById('eliminarUsuarioForm').action = '/admin/usuario/' + usuarioId + '/eliminar';
@@ -264,15 +274,26 @@
             modal.show();
         }
 
-        // Confirmación antes de resetear contraseña de admin
-        document.getElementById('resetPasswordForm')?.addEventListener('submit', function(e) {
-            const usuarioEmail = document.getElementById('usuarioEmailReset').textContent;
-            const adminWarning = document.getElementById('adminWarning');
-            
-            if (!adminWarning.classList.contains('d-none')) {
-                if (!confirm('¿Estás ABSOLUTAMENTE seguro de resetear la contraseña de un administrador?')) {
-                    e.preventDefault();
-                }
+        // Confirmación adicional para resetear contraseña de admin
+        document.addEventListener('DOMContentLoaded', function() {
+            const resetForm = document.getElementById('resetPasswordForm');
+            if (resetForm) {
+                resetForm.addEventListener('submit', function(e) {
+                    const usuarioEmail = document.getElementById('usuarioEmailReset').textContent;
+                    const adminWarning = document.getElementById('adminWarning');
+                    
+                    if (!adminWarning.classList.contains('d-none')) {
+                        if (!confirm('¿Estás ABSOLUTAMENTE seguro de resetear la contraseña del administrador ' + usuarioEmail + '?')) {
+                            e.preventDefault();
+                            return false;
+                        }
+                    }
+                    
+                    // Mostrar mensaje de procesamiento
+                    const submitBtn = this.querySelector('button[type="submit"]');
+                    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Procesando...';
+                    submitBtn.disabled = true;
+                });
             }
         });
     </script>

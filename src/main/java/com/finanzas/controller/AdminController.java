@@ -43,6 +43,8 @@ public class AdminController {
     @PostMapping("/usuario/{id}/reset-password")
     public String resetearPassword(@PathVariable Long id, RedirectAttributes redirectAttributes) {
         try {
+            System.out.println("Resetear password llamado para usuario ID: " + id);
+            
             Optional<Usuario> usuarioOpt = usuarioService.encontrarPorId(id);
             if (usuarioOpt.isEmpty()) {
                 redirectAttributes.addFlashAttribute("error", "Usuario no encontrado");
@@ -50,16 +52,34 @@ public class AdminController {
             }
             
             Usuario usuario = usuarioOpt.get();
-            String nuevaPassword = "123456"; // Password por defecto
-            usuario.setPassword(passwordEncoder.encode(nuevaPassword));
-            usuarioService.guardarUsuario(usuario);
+            String nuevaPassword = "123456";
             
-            redirectAttributes.addFlashAttribute("success", 
-                "Contraseña restablecida para " + usuario.getEmail() + 
-                ". Nueva contraseña temporal: <strong>123456</strong><br>" +
-                "<small>El usuario debe cambiarla en 'Cambiar Contraseña' después de iniciar sesión.</small>");
+            System.out.println("Reseteando password para: " + usuario.getEmail());
+            System.out.println("Password anterior (hash): " + usuario.getPassword());
+            
+            // Usar el servicio para cambiar la contraseña (asegura encriptado consistente)
+            boolean exito = usuarioService.cambiarPassword(usuario.getEmail(), nuevaPassword);
+            
+            if (exito) {
+                // Verificar que se guardó correctamente
+                Usuario usuarioVerificado = usuarioService.encontrarPorEmail(usuario.getEmail()).get();
+                System.out.println("Nuevo hash guardado: " + usuarioVerificado.getPassword());
+                
+                // Verificar que el nuevo hash funciona
+                boolean hashFunciona = passwordEncoder.matches(nuevaPassword, usuarioVerificado.getPassword());
+                System.out.println("Hash verificado: " + hashFunciona);
+                
+                redirectAttributes.addFlashAttribute("success", 
+                    "Contraseña restablecida para " + usuario.getEmail() + 
+                    ". Nueva contraseña temporal: <strong>123456</strong><br>" +
+                    "<small>El usuario debe cambiarla en 'Cambiar Contraseña' después de iniciar sesión.</small>");
+            } else {
+                redirectAttributes.addFlashAttribute("error", "Error al restablecer la contraseña");
+            }
             
         } catch (Exception e) {
+            System.out.println("Error en resetearPassword: " + e.getMessage());
+            e.printStackTrace();
             redirectAttributes.addFlashAttribute("error", "Error al restablecer la contraseña: " + e.getMessage());
         }
         
@@ -69,6 +89,8 @@ public class AdminController {
     @PostMapping("/usuario/{id}/eliminar")
     public String eliminarUsuario(@PathVariable Long id, RedirectAttributes redirectAttributes) {
         try {
+            System.out.println("Eliminar usuario llamado para ID: " + id);
+            
             Optional<Usuario> usuarioOpt = usuarioService.encontrarPorId(id);
             if (usuarioOpt.isEmpty()) {
                 redirectAttributes.addFlashAttribute("error", "Usuario no encontrado");
@@ -83,12 +105,16 @@ public class AdminController {
                 return "redirect:/admin/dashboard";
             }
             
+            System.out.println("Eliminando usuario: " + usuario.getEmail());
+            
             // Eliminar el usuario (las actividades se eliminarán en cascada por la relación)
             usuarioService.eliminarUsuario(id);
             
             redirectAttributes.addFlashAttribute("success", "Usuario " + usuario.getEmail() + " eliminado correctamente");
             
         } catch (Exception e) {
+            System.out.println("Error en eliminarUsuario: " + e.getMessage());
+            e.printStackTrace();
             redirectAttributes.addFlashAttribute("error", "Error al eliminar el usuario: " + e.getMessage());
         }
         
