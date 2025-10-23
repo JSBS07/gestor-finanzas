@@ -19,8 +19,10 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 @Controller
 @RequestMapping("/dashboard")
@@ -84,9 +86,10 @@ public class DashboardController {
                                  RedirectAttributes redirectAttributes) {
         logger.debug("POST crearActividad recibido: descripcion='{}' monto='{}' tipo='{}' categoria='{}'", descripcion, monto, tipo, categoria);
         try {
-            // Validaciones básicas
-            if (descripcion == null || descripcion.trim().isEmpty()) {
-                redirectAttributes.addFlashAttribute("error", "La descripción es obligatoria");
+            // 🔹 VALIDACIÓN DE DESCRIPCIÓN (NUEVO)
+            String errorDescripcion = validarDescripcion(descripcion);
+            if (errorDescripcion != null) {
+                redirectAttributes.addFlashAttribute("error", errorDescripcion);
                 return "redirect:/dashboard";
             }
 
@@ -155,6 +158,13 @@ public class DashboardController {
             Usuario usuario = email != null ? usuarioService.encontrarPorEmail(email).orElse(null) : null;
             if (usuario == null || actividad.getUsuario() == null || !actividad.getUsuario().getId().equals(usuario.getId())) {
                 redirectAttributes.addFlashAttribute("error", "No tienes permiso para modificar esta actividad");
+                return "redirect:/dashboard";
+            }
+
+            // 🔹 VALIDACIÓN DE DESCRIPCIÓN (NUEVO)
+            String errorDescripcion = validarDescripcion(descripcion);
+            if (errorDescripcion != null) {
+                redirectAttributes.addFlashAttribute("error", errorDescripcion);
                 return "redirect:/dashboard";
             }
 
@@ -242,6 +252,68 @@ public class DashboardController {
             redirectAttributes.addFlashAttribute("error", "Error al cambiar estado: " + e.getMessage());
         }
         return "redirect:/dashboard";
+    }
+
+    // 🔹 MÉTODO DE VALIDACIÓN DE DESCRIPCIÓN (NUEVO)
+    private String validarDescripcion(String descripcion) {
+        // Validar que no esté vacía
+        if (descripcion == null || descripcion.trim().isEmpty()) {
+            return "La descripción no puede estar vacía";
+        }
+
+        // Limpiar espacios
+        descripcion = descripcion.trim();
+
+        // Validar longitud total (máximo 60 caracteres)
+        if (descripcion.length() > 60) {
+            return "La descripción no puede superar los 60 caracteres";
+        }
+
+        // Validar que solo contenga letras, números y espacios (sin símbolos como $ % & / ( ) " etc.)
+        if (!descripcion.matches("^[a-zA-Z0-9áéíóúÁÉÍÓÚñÑ\\s]+$")) {
+            return "La descripción solo puede contener letras, números y espacios";
+        }
+
+        // Validar que no sea solo números
+        if (descripcion.matches("^\\d+$")) {
+            return "La descripción no puede ser solo un número";
+        }
+
+        // Validar que no contenga números excesivamente largos (más de 10 dígitos seguidos)
+        if (descripcion.matches(".*\\d{11,}.*")) {
+            return "Los números en la descripción no pueden tener más de 10 dígitos seguidos";
+        }
+
+        // Dividir la descripción en palabras
+        String[] palabras = descripcion.split("\\s+");
+
+        // Validar número máximo de palabras (máximo 5)
+        if (palabras.length > 5) {
+            return "La descripción no puede tener más de 5 palabras";
+        }
+
+        // Validar palabras repetidas, longitud y letras repetidas
+        Set<String> palabrasUsadas = new HashSet<>();
+        for (String palabra : palabras) {
+            // Validar longitud de palabra (máximo 15 caracteres)
+            if (palabra.length() > 15) {
+                return "Cada palabra debe tener como máximo 15 caracteres";
+            }
+
+            // Validar que no haya palabras repetidas
+            String palabraLower = palabra.toLowerCase();
+            if (!palabrasUsadas.add(palabraLower)) {
+                return "No se pueden repetir palabras en la descripción";
+            }
+
+            // Validar que no se repita la misma letra más de 2 veces seguidas (por ejemplo "aaa")
+            if (palabra.matches(".*([a-zA-ZáéíóúÁÉÍÓÚñÑ])\\1{2,}.*")) {
+                return "No se puede repetir la misma letra más de 2 veces seguidas";
+            }
+        }
+
+        // ✅ Si pasa todas las validaciones, retorna null (sin error)
+        return null;
     }
 
     // Método especializado para formato colombiano

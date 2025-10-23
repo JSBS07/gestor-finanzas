@@ -276,3 +276,66 @@ body {
     border-top-right-radius: 0.375rem;
     border-bottom-right-radius: 0.375rem;
 }
+
+/* Estilos para validación en tiempo real */
+.validation-feedback {
+    display: none;
+    font-size: 0.875rem;
+    margin-top: 0.25rem;
+}
+
+.is-valid {
+    border-color: #198754 !important;
+}
+
+.is-invalid {
+    border-color: #dc3545 !important;
+}
+
+.valid-feedback {
+    display: none;
+    width: 100%;
+    margin-top: 0.25rem;
+    font-size: 0.875em;
+    color: #198754;
+}
+
+.invalid-feedback {
+    display: none;
+    width: 100%;
+    margin-top: 0.25rem;
+    font-size: 0.875em;
+    color: #dc3545;
+}
+
+.validation-icon {
+    margin-right: 0.5rem;
+}
+
+.password-strength {
+    height: 4px;
+    border-radius: 2px;
+    transition: all 0.3s ease;
+}
+
+.strength-weak { background-color: #dc3545; width: 25%; }
+.strength-fair { background-color: #ffc107; width: 50%; }
+.strength-good { background-color: #17a2b8; width: 75%; }
+.strength-strong { background-color: #28a745; width: 100%; }
+
+.requirement-list {
+    font-size: 0.8rem;
+    margin-top: 0.5rem;
+}
+
+.requirement-item {
+    margin-bottom: 0.25rem;
+}
+
+.requirement-valid {
+    color: #198754;
+}
+
+.requirement-invalid {
+    color: #6c757d;
+}

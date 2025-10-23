@@ -35,34 +35,80 @@ public class AuthController {
 
     // Procesar registro
     @PostMapping("/register")
-    public String register(@RequestParam String email,
+    public String register(@RequestParam String nombre,
+                          @RequestParam String email,
                           @RequestParam String password,
-                          @RequestParam String nombre,
                           RedirectAttributes redirectAttributes) {
         
-        // Verificar si el email ya existe
-        if (usuarioService.existePorEmail(email)) {
-            redirectAttributes.addFlashAttribute("error", "El email ya está registrado");
+        // Validaciones del servidor que coincidan con el frontend
+        try {
+            // 1. Validar formato del nombre
+            if (!nombre.matches("^[a-zA-ZáéíóúÁÉÍÓÚñÑ\\s]{3,50}$")) {
+                redirectAttributes.addFlashAttribute("error", "Formato de nombre inválido");
+                return "redirect:/register";
+            }
+            
+            // 2. Validar que el nombre tenga 1-2 palabras
+            String[] palabras = nombre.trim().split("\\s+");
+            if (palabras.length < 1 || palabras.length > 2) {
+                redirectAttributes.addFlashAttribute("error", "El nombre debe contener 1 o 2 palabras");
+                return "redirect:/register";
+            }
+            
+            // 3. Validar longitud de cada palabra
+            for (String palabra : palabras) {
+                if (palabra.length() < 3 || palabra.length() > 20) {
+                    redirectAttributes.addFlashAttribute("error", "Cada palabra debe tener entre 3 y 20 caracteres");
+                    return "redirect:/register";
+                }
+            }
+            
+            // 4. Validar formato de email (solo Gmail)
+            if (!email.endsWith("@gmail.com")) {
+                redirectAttributes.addFlashAttribute("error", "Solo se aceptan cuentas @gmail.com");
+                return "redirect:/register";
+            }
+            
+            // 5. Validar parte local del email
+            String localPart = email.split("@")[0];
+            if (localPart.length() < 3 || localPart.length() > 20) {
+                redirectAttributes.addFlashAttribute("error", "El email debe tener entre 3 y 20 caracteres antes del @");
+                return "redirect:/register";
+            }
+            
+            if (!localPart.matches("^[a-zA-Z0-9.]+$")) {
+                redirectAttributes.addFlashAttribute("error", "El email contiene caracteres no permitidos");
+                return "redirect:/register";
+            }
+            
+            // 6. Validar contraseña (mínimo 8 caracteres ahora)
+            if (password.length() < 8) {
+                redirectAttributes.addFlashAttribute("error", "La contraseña debe tener al menos 8 caracteres");
+                return "redirect:/register";
+            }
+            
+            // 7. Verificar si el email ya existe (esta validación ya la tienes)
+            if (usuarioService.existePorEmail(email)) {
+                redirectAttributes.addFlashAttribute("error", "El email ya está registrado");
+                return "redirect:/register";
+            }
+
+            // Crear nuevo usuario
+            Usuario usuario = new Usuario();
+            usuario.setEmail(email);
+            usuario.setPassword(password);
+            usuario.setNombre(nombre);
+            usuario.setRol(RolUsuario.USUARIO);
+
+            usuarioService.guardarUsuario(usuario);
+
+            redirectAttributes.addFlashAttribute("success", "Registro exitoso. Ahora puedes iniciar sesión.");
+            return "redirect:/login";
+            
+        } catch (Exception e) {
+            redirectAttributes.addFlashAttribute("error", "Error en el registro: " + e.getMessage());
             return "redirect:/register";
         }
-
-        // Validar fortaleza de contraseña
-        if (password.length() < 6) {
-            redirectAttributes.addFlashAttribute("error", "La contraseña debe tener al menos 6 caracteres");
-            return "redirect:/register";
-        }
-
-        // Crear nuevo usuario
-        Usuario usuario = new Usuario();
-        usuario.setEmail(email);
-        usuario.setPassword(password); // Se encriptará automáticamente en el servicio
-        usuario.setNombre(nombre);
-        usuario.setRol(RolUsuario.USUARIO);
-
-        usuarioService.guardarUsuario(usuario);
-
-        redirectAttributes.addFlashAttribute("success", "Registro exitoso. Ahora puedes iniciar sesión.");
-        return "redirect:/login";
     }
 
     // Página principal (redirige al dashboard)
