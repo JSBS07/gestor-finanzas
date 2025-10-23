@@ -47,6 +47,16 @@ public class DashboardController {
                 return "redirect:/login";
             }
 
+            // 🔹 NUEVO: Verificar si el usuario tiene contraseña temporal
+            if (usuario.isPasswordTemporal()) {
+                model.addAttribute("warning", "Has ingresado con contraseña restablecida por el admin, por seguridad cámbiala.");
+                
+                // Opcional: Podemos quitar el flag después de mostrar el mensaje
+                // para que no aparezca en futuros logins
+                // usuario.setPasswordTemporal(false);
+                // usuarioService.guardarUsuario(usuario);
+            }
+
             List<Actividad> pendientes = actividadService.obtenerPorUsuarioYEstado(usuario, EstadoActividad.PENDIENTE);
             List<Actividad> completadas = actividadService.obtenerPorUsuarioYEstado(usuario, EstadoActividad.COMPLETADO);
 

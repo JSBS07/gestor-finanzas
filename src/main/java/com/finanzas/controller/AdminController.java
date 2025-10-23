@@ -61,6 +61,10 @@ public class AdminController {
             boolean exito = usuarioService.cambiarPassword(usuario.getEmail(), nuevaPassword);
             
             if (exito) {
+                // 🔹 NUEVO: Marcar la contraseña como temporal
+                usuario.setPasswordTemporal(true);
+                usuarioService.guardarUsuario(usuario);
+
                 // Verificar que se guardó correctamente
                 Usuario usuarioVerificado = usuarioService.encontrarPorEmail(usuario.getEmail()).get();
                 System.out.println("Nuevo hash guardado: " + usuarioVerificado.getPassword());

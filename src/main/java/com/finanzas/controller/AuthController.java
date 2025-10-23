@@ -123,7 +123,7 @@ public class AuthController {
         return "cambiar-password";
     }
 
-    // Procesar cambio de contraseña
+    // Procesar cambio de contraseña (versión final: quita flag de passwordTemporal si existe)
     @PostMapping("/cambiar-password")
     public String cambiarPassword(@RequestParam String currentPassword,
                                  @RequestParam String newPassword,
@@ -151,9 +151,9 @@ public class AuthController {
                 return "redirect:/cambiar-password";
             }
 
-            // Validar fortaleza de la nueva contraseña
-            if (newPassword.length() < 6) {
-                redirectAttributes.addFlashAttribute("error", "La nueva contraseña debe tener al menos 6 caracteres");
+            // Validar fortaleza de la nueva contraseña (mínimo 8 caracteres)
+            if (newPassword.length() < 8) {
+                redirectAttributes.addFlashAttribute("error", "La nueva contraseña debe tener al menos 8 caracteres");
                 return "redirect:/cambiar-password";
             }
 
@@ -167,6 +167,12 @@ public class AuthController {
             boolean exito = usuarioService.cambiarPassword(email, newPassword);
             
             if (exito) {
+                //  Quitar el flag de contraseña temporal si existe
+                if (usuario.isPasswordTemporal()) {
+                    usuario.setPasswordTemporal(false);
+                    usuarioService.guardarUsuario(usuario);
+                }
+
                 redirectAttributes.addFlashAttribute("success", "Contraseña cambiada exitosamente");
                 return "redirect:/dashboard";
             } else {

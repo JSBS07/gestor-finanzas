@@ -37,6 +37,10 @@ public class Usuario {
     @Column(name = "fecha_registro")
     private LocalDateTime fechaRegistro;
 
+    //  Campo para identificar contraseña temporal
+    @Column(name = "password_temporal", nullable = false)
+    private boolean passwordTemporal = false;
+
     // Relación con actividades (un usuario tiene muchas actividades)
     @OneToMany(mappedBy = "usuario", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private List<Actividad> actividades = new ArrayList<>();
@@ -44,6 +48,7 @@ public class Usuario {
     // Constructores
     public Usuario() {
         this.fechaRegistro = LocalDateTime.now();
+        this.passwordTemporal = false;
     }
 
     public Usuario(String email, String password, String nombre, RolUsuario rol) {
@@ -73,7 +78,9 @@ public class Usuario {
     public LocalDateTime getFechaRegistro() { return fechaRegistro; }
     public void setFechaRegistro(LocalDateTime fechaRegistro) { this.fechaRegistro = fechaRegistro; }
 
+    public boolean isPasswordTemporal() { return passwordTemporal; }
+    public void setPasswordTemporal(boolean passwordTemporal) { this.passwordTemporal = passwordTemporal; }
+
     public List<Actividad> getActividades() { return actividades; }
     public void setActividades(List<Actividad> actividades) { this.actividades = actividades; }
-
 }
